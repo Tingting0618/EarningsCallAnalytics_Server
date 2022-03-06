@@ -1,0 +1,1 @@
+select * from earningscall_api_company_types

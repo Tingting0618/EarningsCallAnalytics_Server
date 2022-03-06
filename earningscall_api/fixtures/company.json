@@ -1,0 +1,26 @@
+[
+    {
+        "model": "earningscall_api.company",
+        "pk": 1,
+        "fields": {
+            "value": "WH",
+            "label": "Wyndham",
+            "company_type": 1,
+            "year": 2021,
+            "quarter": 1,
+            "transcript": "hello this is a hahaha"
+        }
+    },
+    {
+        "model": "earningscall_api.company",
+        "pk": 2,
+        "fields": {
+            "value": "ABNB",
+            "label": "Airbnb",
+            "company_type": 2,
+            "year": 2021,
+            "quarter": 1,
+            "transcript": "hello this is a hehehe"
+        }
+    }
+]

@@ -1,0 +1,10 @@
+[
+    {
+      "model": "earningscall_api.appuser",
+      "pk": 1,
+      "fields": {
+        "user": 1,
+        "bio": "Me"
+      }
+    }
+  ]

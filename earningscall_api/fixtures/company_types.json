@@ -1,0 +1,23 @@
+[
+    {
+      "model": "earningscall_api.companytype",
+      "pk": 1,
+      "fields": {
+        "label": "Internet"
+      }
+    },
+    {
+      "model": "earningscall_api.companytype",
+      "pk": 2,
+      "fields": {
+        "label": "Travel"
+      }
+    },
+    {
+      "model": "earningscall_api.companytype",
+      "pk": 3,
+      "fields": {
+        "label": "Healthcare"
+      }
+    }
+  ]
