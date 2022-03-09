@@ -22,22 +22,39 @@ class CompanyView(ViewSet):
         except Exception as ex:
             return HttpResponseServerError(ex)
 
+
+            
     def list(self, request):
         """Handle GET requests to get all company types
 
         Returns:
             Response -- JSON serialized list of company types
         """
-        company = Company.objects.all()
-
-        # Note the addtional `many=True` argument to the
-        # serializer. It's needed when you are serializing
-        # a list of objects instead of a single object.
-        serializer = CompanySerializer(
-            company, many=True, context={'request': request})
-        return Response(serializer.data)
+        companies = Company.objects.all()
+        searched_co = self.request.query_params.get('symbol', None)
+        
+        if searched_co is not None:
+            searched_co = searched_co.split(',')
+            companies = companies.filter(value__in=searched_co)
+            serializer = CompanyTranscriptSerializer(
+                companies, many=True, context={'request': request})
+            return Response(serializer.data)
+        else: 
+            serializer = CompanySerializer(
+            companies, many=True, context={'request': request})
+            return Response(serializer.data)
 
 class CompanySerializer(serializers.ModelSerializer):
+    """JSON serializer for company types
+
+    Arguments:
+        serializers
+    """
+    class Meta:
+        model = Company
+        fields = ('id', 'label','value')
+
+class CompanyTranscriptSerializer(serializers.ModelSerializer):
     """JSON serializer for company types
 
     Arguments:
