@@ -32,13 +32,21 @@ class CompanyView(ViewSet):
         """
         companies = Company.objects.all()
         searched_co = self.request.query_params.get('symbol', None)
-        
-        if searched_co is not None:
-            searched_co = searched_co.split(',')
+        start_year = self.request.query_params.get('start_year', None)
+        end_year = self.request.query_params.get('end_year', None)
+
+        if searched_co and start_year and end_year:
+            searched_co = searched_co.split(',')  
+            start_year=int(start_year)
+            end_year=int(end_year)        
             companies = companies.filter(value__in=searched_co)
+            companies = companies.filter(year__gte=start_year)
+            companies = companies.filter(year__lte=end_year)
+            
             serializer = CompanyTranscriptSerializer(
                 companies, many=True, context={'request': request})
             return Response(serializer.data)
+        
         else: 
             serializer = CompanySerializer(
             companies, many=True, context={'request': request})
