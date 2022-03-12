@@ -1,9 +1,19 @@
 """View module for handling requests about company types"""
-from django.http import HttpResponseServerError
+from django.forms import ValidationError
+from django.http import HttpResponse, HttpResponseServerError
 from rest_framework.viewsets import ViewSet
 from rest_framework.response import Response
-from rest_framework import serializers
+from rest_framework import serializers, status
 from earningscall_api.models import Company
+import json
+
+"""DS modules"""
+import nltk
+from nltk.corpus import stopwords
+from django_pandas.io import read_frame
+from nltk.tokenize import sent_tokenize, word_tokenize
+from nltk.stem import PorterStemmer
+from nltk import FreqDist
 
 
 class CompanyView(ViewSet):
@@ -43,14 +53,44 @@ class CompanyView(ViewSet):
             companies = companies.filter(year__gte=start_year)
             companies = companies.filter(year__lte=end_year)
             
-            serializer = CompanyTranscriptSerializer(
-                companies, many=True, context={'request': request})
-            return Response(serializer.data)
+            df = read_frame(companies, fieldnames = [ "value", "label", "year", "quarter",
+            "transcript"])            
+            transcript = ""
+            for (idx, row)  in df.iterrows(): 
+                transcript = transcript+" "+ row.loc['transcript']
+            word_tokens = word_tokenize(transcript)
+            #ps = PorterStemmer()
+
+            stemed_transcript = []
+            for w in word_tokens:
+                #stemed_transcript.append(ps.stem(w).lower())
+                stemed_transcript.append(w.lower())
+
+            stop_words = set(stopwords.words('english'))
+            filtered_transcript = []
+            for w in stemed_transcript:
+                if w not in stop_words:
+                    filtered_transcript.append(w)
+            
+            fdist = FreqDist(filtered_transcript)
+            fd = fdist.most_common(10)
+            
+            x_val = [x[0] for x in fd]
+            y_val = [x[1] for x in fd]
+
+            chart1_json = json.dumps(
+                [{'words': x_val, 'freq': y_val} for x_val, y_val in zip(x_val,y_val)])
+            
+            return HttpResponse(chart1_json,status=200,content_type='application/json')
+            # serializer = CompanyTranscriptSerializer(
+            #     companies, many=True, context={'request': request})
+            # return Response(serializer.data)
         
         else: 
             serializer = CompanySerializer(
             companies, many=True, context={'request': request})
             return Response(serializer.data)
+            #return Response({"reason":ValidationError.messages},status=status.HTTP_400_BAD_REQUEST)
 
 class CompanySerializer(serializers.ModelSerializer):
     """JSON serializer for company types

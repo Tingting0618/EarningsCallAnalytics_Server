@@ -1,26 +1,27 @@
 [
     {
-        "model": "earningscall_api.company",
-        "pk": 1,
-        "fields": {
-            "value": "WH",
+      "model": "earningscall_api.company",
+      "pk": 1,
+      "fields": {
+        "value": "WH",
             "label": "Wyndham",
-            "company_type": 1,
+            "company_type":1,
             "year": 2021,
-            "quarter": 1,
-            "transcript": "hello this is a hahaha"
-        }
+            "quarter":1,
+            "transcript":"hello this is a hahaha"
+      }
     },
     {
-        "model": "earningscall_api.company",
-        "pk": 2,
-        "fields": {
-            "value": "ABNB",
+      "model": "earningscall_api.company",
+      "pk": 2,
+      "fields": {
+        "value": "ABNB",
             "label": "Airbnb",
-            "company_type": 2,
+            "company_type":2,
             "year": 2021,
-            "quarter": 1,
-            "transcript": "hello this is a hehehe"
-        }
+            "quarter":1,
+            "transcript":"hello this is a hehehe"
+      }
     }
-]
+  ]
+  
