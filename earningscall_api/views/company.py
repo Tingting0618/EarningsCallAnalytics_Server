@@ -1,12 +1,13 @@
 """View module for handling requests about company types"""
 from django.http import HttpResponse, HttpResponseServerError
+from django.core.exceptions import ValidationError
 from rest_framework.viewsets import ViewSet
 from rest_framework.response import Response
-from rest_framework import serializers
-from earningscall_api.models import Company
+from rest_framework import serializers, status
+from earningscall_api.models import Company, Appuser, CompanyType
 import json
 from nltk import FreqDist
-from nltk.tokenize import sent_tokenize, word_tokenize
+from nltk.tokenize import word_tokenize
 from nltk.text import Text
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
 from django_pandas.io import read_frame
@@ -16,6 +17,59 @@ from nltk.corpus import stopwords
 class CompanyView(ViewSet):
     """Company types"""
 
+    def create(self, request):
+        """Handle POST operations
+
+        Returns:
+            Response -- JSON serialized game instance
+        """
+        # # Uses the token passed in the `Authorization` header
+        # appuser = Appuser.objects.get(user=request.auth.user)
+
+        # Create a new Python instance of the Company class
+        # and set its properties from what was sent in the
+        # body of the request from the client.
+        company = Company()
+        company.label = request.data["label"]
+        company.value = request.data["value"]
+        company.year = request.data["year"]
+        company.quarter = request.data["quarter"]
+        company.transcript = request.data["transcript"]
+        # Use the Django ORM to get the record from the database
+        # whose `id` is what the client passed as the
+        # `gameTypeId` in the body of the request.
+        company_type = CompanyType.objects.get(pk=request.data["companyTypeId"])
+        company.company_type = company_type
+
+        # Try to save the new game to the database, then
+        # serialize the game instance as JSON, and send the
+        # JSON as a response to the client request
+        try:
+            company.save()
+            serializer = CompanySerializer(company, context={'request': request})
+            return Response(serializer.data)
+
+        # If anything went wrong, catch the exception and
+        # send a response with a 400 status code to tell the
+        # client that something was wrong with its request data
+        except ValidationError as ex:
+            return Response({"reason": ex.message}, status=status.HTTP_400_BAD_REQUEST)
+    def destroy(self, request, pk=None):
+        """Handle DELETE requests for a single game
+        Returns:
+            Response -- 200, 404, or 500 status code
+        """
+        try:
+            company =Company.objects.get(pk=pk)
+            company.delete()
+
+            return Response({}, status=status.HTTP_204_NO_CONTENT)
+
+        except Company.DoesNotExist as ex:
+            return Response({'message': ex.args[0]}, status=status.HTTP_404_NOT_FOUND)
+
+        except Exception as ex:
+            return Response({'message': ex.args[0]}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)        
     def retrieve(self, request, pk=None):
         """Handle GET requests for single Company
 
@@ -24,7 +78,7 @@ class CompanyView(ViewSet):
         """
         try:
             company = Company.objects.get(pk=pk)
-            serializer = CompanySerializer(
+            serializer = CompanyTranscriptSerializer(
                 company, context={'request': request})
             return Response(serializer.data)
         except Exception as ex:
@@ -70,7 +124,10 @@ class CompanyView(ViewSet):
                 # stemed_transcript.append(ps.stem(w).lower())
                 stemed_transcript.append(w.lower())
 
+            new_stopwords = [",", ".", "to", "on", "daily"]
             stop_words = set(stopwords.words('english'))
+            stop_words.update(new_stopwords)
+            
             filtered_transcript = []
             for w in stemed_transcript:
                 if w not in stop_words:
