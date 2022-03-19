@@ -5,6 +5,7 @@ from rest_framework.viewsets import ViewSet
 from rest_framework.response import Response
 from rest_framework import serializers, status
 from earningscall_api.models import Company, Appuser, CompanyType
+from rest_framework.decorators import action
 import json
 from nltk import FreqDist
 from nltk.tokenize import word_tokenize
@@ -23,37 +24,37 @@ class CompanyView(ViewSet):
         Returns:
             Response -- JSON serialized game instance
         """
-        # # Uses the token passed in the `Authorization` header
-        # appuser = Appuser.objects.get(user=request.auth.user)
-
-        # Create a new Python instance of the Company class
-        # and set its properties from what was sent in the
-        # body of the request from the client.
         company = Company()
         company.label = request.data["label"]
         company.value = request.data["value"]
         company.year = request.data["year"]
         company.quarter = request.data["quarter"]
         company.transcript = request.data["transcript"]
-        # Use the Django ORM to get the record from the database
-        # whose `id` is what the client passed as the
-        # `gameTypeId` in the body of the request.
         company_type = CompanyType.objects.get(pk=request.data["companyTypeId"])
         company.company_type = company_type
-
-        # Try to save the new game to the database, then
-        # serialize the game instance as JSON, and send the
-        # JSON as a response to the client request
         try:
             company.save()
             serializer = CompanySerializer(company, context={'request': request})
             return Response(serializer.data)
-
-        # If anything went wrong, catch the exception and
-        # send a response with a 400 status code to tell the
-        # client that something was wrong with its request data
         except ValidationError as ex:
             return Response({"reason": ex.message}, status=status.HTTP_400_BAD_REQUEST)
+    def update(self, request, pk=None):
+        """Handle POST operations
+
+        Returns:
+            Response -- JSON serialized game instance
+        """
+        company = Company.objects.get(pk=pk)
+        company.label = request.data["label"]
+        company.value = request.data["value"]
+        company.year = request.data["year"]
+        company.quarter = request.data["quarter"]
+        company.transcript = request.data["transcript"]
+        company.company_type = CompanyType.objects.get(pk=request.data["companyTypeId"])
+        
+        company.save()
+        return Response({}, status=status.HTTP_204_NO_CONTENT)  
+    
     def destroy(self, request, pk=None):
         """Handle DELETE requests for a single game
         Returns:
@@ -84,6 +85,43 @@ class CompanyView(ViewSet):
         except Exception as ex:
             return HttpResponseServerError(ex)
 
+    @action(methods=['post', 'delete'], detail=True)
+    def follow(self, request, pk=None):
+        """Managing gamers signing up for events"""
+        # Django uses the `Authorization` header to determine
+        # which user is making the request to sign up
+        appuser = Appuser.objects.get(user=request.auth.user)
+
+        try:
+            # Handle the case if the client specifies a game
+            # that doesn't exist
+            company = Company.objects.get(pk=pk)
+        except Company.DoesNotExist:
+            return Response(
+                {'message': 'Company does not exist.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # A gamer wants to sign up for an event
+        if request.method == "POST":
+            try:
+                # Using the attendees field on the event makes it simple to add a gamer to the event
+                # .add(gamer) will insert into the join table a new row the gamer_id and the event_id
+                company.followers.add(appuser)
+                return Response({}, status=status.HTTP_201_CREATED)
+            except Exception as ex:
+                return Response({'message': ex.args[0]})
+
+        # User wants to leave a previously joined event
+        elif request.method == "DELETE":
+            try:
+                # The many to many relationship has a .remove method that removes the gamer from the attendees list
+                # The method deletes the row in the join table that has the gamer_id and event_id
+                company.followers.remove(appuser)
+                return Response(None, status=status.HTTP_204_NO_CONTENT)
+            except Exception as ex:
+                return Response({'message': ex.args[0]})
+            
     def list(self, request):
         """Handle GET requests to get all company types
 
@@ -183,7 +221,7 @@ class CompanySerializer(serializers.ModelSerializer):
     """
     class Meta:
         model = Company
-        fields = ('id', 'label', 'value')
+        fields = ('id', 'label', 'value','company_type')
 
 
 class CompanyTranscriptSerializer(serializers.ModelSerializer):
