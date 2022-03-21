@@ -12,6 +12,9 @@ django-cors-headers = "*"
 pylint-django = "*"
 mltk = "*"
 nltk = "*"
+django-heroku = "*"
+numpy = "*"
+gunicorn = "*"
 
 [dev-packages]
 
