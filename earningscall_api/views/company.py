@@ -1,5 +1,6 @@
 """View module for handling requests about company types"""
 from django.http import HttpResponse, HttpResponseServerError
+from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from django.core.exceptions import ValidationError
 from rest_framework.viewsets import ViewSet
 from rest_framework.response import Response
@@ -14,10 +15,9 @@ from nltk.sentiment.vader import SentimentIntensityAnalyzer
 from django_pandas.io import read_frame
 from nltk.corpus import stopwords
 
-
-class CompanyView(ViewSet):
-    """Company types"""
-
+class AnalyticsView(ViewSet):
+    """Dashboard"""
+    
     def create(self, request):
         """Handle POST operations
 
@@ -38,54 +38,8 @@ class CompanyView(ViewSet):
             return Response(serializer.data)
         except ValidationError as ex:
             return Response({"reason": ex.message}, status=status.HTTP_400_BAD_REQUEST)
-    def update(self, request, pk=None):
-        """Handle POST operations
-
-        Returns:
-            Response -- JSON serialized game instance
-        """
-        company = Company.objects.get(pk=pk)
-        company.label = request.data["label"]
-        company.value = request.data["value"]
-        company.year = request.data["year"]
-        company.quarter = request.data["quarter"]
-        company.transcript = request.data["transcript"]
-        company.company_type = CompanyType.objects.get(pk=request.data["companyTypeId"])
         
-        company.save()
-        return Response({}, status=status.HTTP_204_NO_CONTENT)  
-    
-    def destroy(self, request, pk=None):
-        """Handle DELETE requests for a single game
-        Returns:
-            Response -- 200, 404, or 500 status code
-        """
-        try:
-            company =Company.objects.get(pk=pk)
-            company.delete()
-
-            return Response({}, status=status.HTTP_204_NO_CONTENT)
-
-        except Company.DoesNotExist as ex:
-            return Response({'message': ex.args[0]}, status=status.HTTP_404_NOT_FOUND)
-
-        except Exception as ex:
-            return Response({'message': ex.args[0]}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)        
-    def retrieve(self, request, pk=None):
-        """Handle GET requests for single Company
-
-        Returns:
-            Response -- JSON serialized Company
-        """
-        try:
-            company = Company.objects.get(pk=pk)
-            serializer = CompanyTranscriptSerializer(
-                company, context={'request': request})
-            return Response(serializer.data)
-        except Exception as ex:
-            return HttpResponseServerError(ex)
-
-    @action(methods=['post', 'delete'], detail=True)
+    @action(methods=['post', 'delete'], detail=True,permission_classes = [IsAuthenticated])
     def follow(self, request, pk=None):
         """Managing gamers signing up for events"""
         # Django uses the `Authorization` header to determine
@@ -120,8 +74,9 @@ class CompanyView(ViewSet):
                 company.followers.remove(appuser)
                 return Response(None, status=status.HTTP_204_NO_CONTENT)
             except Exception as ex:
-                return Response({'message': ex.args[0]})
-            
+                return Response({'message': ex.args[0]})    
+    
+    
     def list(self, request):
         """Handle GET requests to get all company types
 
@@ -211,6 +166,62 @@ class CompanyView(ViewSet):
             serializer = CompanySerializer(
                 companies, many=True, context={'request': request})
             return Response(serializer.data)
+    
+
+class CompanyView(ViewSet):
+    
+    """Company types"""
+    permission_classes = [IsAdminUser]
+
+    def update(self, request, pk=None):
+        """Handle POST operations
+
+        Returns:
+            Response -- JSON serialized game instance
+        """
+        company = Company.objects.get(pk=pk)
+        company.label = request.data["label"]
+        company.value = request.data["value"]
+        company.year = request.data["year"]
+        company.quarter = request.data["quarter"]
+        company.transcript = request.data["transcript"]
+        company.company_type = CompanyType.objects.get(pk=request.data["companyTypeId"])
+        
+        company.save()
+        return Response({}, status=status.HTTP_204_NO_CONTENT)  
+    
+    def destroy(self, request, pk=None):
+        """Handle DELETE requests for a single game
+        Returns:
+            Response -- 200, 404, or 500 status code
+        """
+        try:
+            company =Company.objects.get(pk=pk)
+            company.delete()
+
+            return Response({}, status=status.HTTP_204_NO_CONTENT)
+
+        except Company.DoesNotExist as ex:
+            return Response({'message': ex.args[0]}, status=status.HTTP_404_NOT_FOUND)
+
+        except Exception as ex:
+            return Response({'message': ex.args[0]}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)        
+    def retrieve(self, request, pk=None):
+        """Handle GET requests for single Company
+
+        Returns:
+            Response -- JSON serialized Company
+        """
+        try:
+            company = Company.objects.get(pk=pk)
+            serializer = CompanyTranscriptSerializer(
+                company, context={'request': request})
+            return Response(serializer.data)
+        except Exception as ex:
+            return HttpResponseServerError(ex)
+
+
+            
 
 
 class CompanySerializer(serializers.ModelSerializer):
