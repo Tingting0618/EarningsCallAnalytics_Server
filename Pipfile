@@ -15,6 +15,7 @@ nltk = "*"
 django-heroku = "*"
 numpy = "*"
 gunicorn = "*"
+django-pandas = "*"
 
 [dev-packages]
 
