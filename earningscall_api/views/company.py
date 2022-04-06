@@ -14,32 +14,37 @@ from nltk.text import Text
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
 from django_pandas.io import read_frame
 from nltk.corpus import stopwords
+from collections import Counter
+
 
 class AnalyticsView(ViewSet):
     """Dashboard"""
-    
+
     def create(self, request):
         """Handle POST operations
 
         Returns:
             Response -- JSON serialized game instance
         """
+        # import pdb; pdb.set_trace()
         company = Company()
         company.label = request.data["label"]
         company.value = request.data["value"]
         company.year = request.data["year"]
         company.quarter = request.data["quarter"]
         company.transcript = request.data["transcript"]
-        company_type = CompanyType.objects.get(pk=request.data["companyTypeId"])
+        company_type = CompanyType.objects.get(
+            pk=request.data["companyTypeId"])
         company.company_type = company_type
         try:
             company.save()
-            serializer = CompanySerializer(company, context={'request': request})
+            serializer = CompanySerializer(
+                company, context={'request': request})
             return Response(serializer.data)
         except ValidationError as ex:
             return Response({"reason": ex.message}, status=status.HTTP_400_BAD_REQUEST)
-        
-    @action(methods=['post', 'delete'], detail=True,permission_classes = [IsAuthenticated])
+
+    @action(methods=['post', 'delete'], detail=True, permission_classes=[IsAuthenticated])
     def follow(self, request, pk=None):
         """Managing gamers signing up for events"""
         # Django uses the `Authorization` header to determine
@@ -74,9 +79,8 @@ class AnalyticsView(ViewSet):
                 company.followers.remove(appuser)
                 return Response(None, status=status.HTTP_204_NO_CONTENT)
             except Exception as ex:
-                return Response({'message': ex.args[0]})    
-    
-    
+                return Response({'message': ex.args[0]})
+
     def list(self, request):
         """Handle GET requests to get all company types
 
@@ -106,9 +110,32 @@ class AnalyticsView(ViewSet):
                                                    "transcript"])
 
             transcript = ""
+            counts = []
             for (idx, row) in df.iterrows():
                 transcript = transcript+" " + row.loc['transcript']
+                word_token = word_tokenize(transcript)
+                wordcounts_lower = Counter(i.lower() for i in word_token)
+                count = Counter(wordcounts_lower)
+                key_word_count = count[searched_keywords.lower()]
+                counts.append(key_word_count)
             word_tokens = word_tokenize(transcript)
+
+            df['counts'] = counts
+            trend_counts = df['counts']
+            trend_companies = df['label']
+            trend_year = df['year']
+            trend_quarter = df['quarter']
+
+            trend_json = [{'trend_year': trend_year,
+                           'companies': trend_companies,
+                           'trend_counts': trend_counts,
+                           'trend_quarter':trend_quarter
+                           }
+                          for trend_year,
+                          trend_companies,
+                          trend_counts,
+                          trend_quarter 
+                          in zip(trend_year, trend_companies, trend_counts, trend_quarter)]
             #ps = PorterStemmer()
 
 ############# Top Words Analysis ################
@@ -117,10 +144,11 @@ class AnalyticsView(ViewSet):
                 # stemed_transcript.append(ps.stem(w).lower())
                 stemed_transcript.append(w.lower())
 
-            new_stopwords = [",", ".", "to", "on", "daily"]
+            new_stopwords = [",", ".", "to", "on",
+                             "daily", '%', "'s", "'re", "'"]
             stop_words = set(stopwords.words('english'))
             stop_words.update(new_stopwords)
-            
+
             filtered_transcript = []
             for w in stemed_transcript:
                 if w not in stop_words:
@@ -141,7 +169,7 @@ class AnalyticsView(ViewSet):
             sia = SentimentIntensityAnalyzer()
             scores = []
             sentences = []
-            for i in range(0,10):
+            for i in range(0, 10):
                 try:
                     sentence1 = ' '.join(word for word in textListNLTK.concordance_list(
                         searched_keywords, width=50)[i][0])
@@ -158,7 +186,9 @@ class AnalyticsView(ViewSet):
 
             all_charts = json.dumps(
                 {'topWords': top_words_json,
-                 'sentimentWords': sentiment_json})
+                 'sentimentWords': sentiment_json,
+                 'trends': trend_json
+                 })
             return HttpResponse(all_charts,
                                 status=200, content_type='application/json')
 
@@ -166,10 +196,10 @@ class AnalyticsView(ViewSet):
             serializer = CompanySerializer(
                 companies, many=True, context={'request': request})
             return Response(serializer.data)
-    
+
 
 class CompanyView(ViewSet):
-    
+
     """Company types"""
     permission_classes = [IsAdminUser]
 
@@ -185,18 +215,19 @@ class CompanyView(ViewSet):
         company.year = request.data["year"]
         company.quarter = request.data["quarter"]
         company.transcript = request.data["transcript"]
-        company.company_type = CompanyType.objects.get(pk=request.data["companyTypeId"])
-        
+        company.company_type = CompanyType.objects.get(
+            pk=request.data["companyTypeId"])
+
         company.save()
-        return Response({}, status=status.HTTP_204_NO_CONTENT)  
-    
+        return Response({}, status=status.HTTP_204_NO_CONTENT)
+
     def destroy(self, request, pk=None):
         """Handle DELETE requests for a single game
         Returns:
             Response -- 200, 404, or 500 status code
         """
         try:
-            company =Company.objects.get(pk=pk)
+            company = Company.objects.get(pk=pk)
             company.delete()
 
             return Response({}, status=status.HTTP_204_NO_CONTENT)
@@ -205,7 +236,8 @@ class CompanyView(ViewSet):
             return Response({'message': ex.args[0]}, status=status.HTTP_404_NOT_FOUND)
 
         except Exception as ex:
-            return Response({'message': ex.args[0]}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)        
+            return Response({'message': ex.args[0]}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
     def retrieve(self, request, pk=None):
         """Handle GET requests for single Company
 
@@ -221,9 +253,6 @@ class CompanyView(ViewSet):
             return HttpResponseServerError(ex)
 
 
-            
-
-
 class CompanySerializer(serializers.ModelSerializer):
     """JSON serializer for company types
 
@@ -232,7 +261,7 @@ class CompanySerializer(serializers.ModelSerializer):
     """
     class Meta:
         model = Company
-        fields = ('id', 'label', 'value','company_type')
+        fields = ('id', 'label', 'value', 'company_type')
 
 
 class CompanyTranscriptSerializer(serializers.ModelSerializer):
