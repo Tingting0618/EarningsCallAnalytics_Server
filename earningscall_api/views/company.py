@@ -136,7 +136,6 @@ class AnalyticsView(ViewSet):
                           trend_counts,
                           trend_quarter 
                           in zip(trend_year, trend_companies, trend_counts, trend_quarter)]
-            #ps = PorterStemmer()
 
 ############# Top Words Analysis ################
             stemed_transcript = []
