@@ -109,36 +109,35 @@ class AnalyticsView(ViewSet):
             df = read_frame(companies, fieldnames=["value", "label", "year", "quarter",
                                                    "transcript"])
 
-            transcript = ""
-            counts = []
-            for (idx, row) in df.iterrows():
-                transcript = transcript+" " + row.loc['transcript']
-                word_token = word_tokenize(transcript)
-                wordcounts_lower = Counter(i.lower() for i in word_token)
-                count = Counter(wordcounts_lower)
-                key_word_count = count[searched_keywords.lower()]
-                counts.append(key_word_count)
-            word_tokens = word_tokenize(transcript)
+            
+            trends_json =[]
+            for i in df['label'].unique():
+                transcript = ""
+                counts = []
+                df_t =df[df['label']==i]
+                for (idx, row) in df_t.iterrows():
+                    transcript = transcript+" " + row.loc['transcript']
+                    word_token = word_tokenize(transcript)
+                    wordcounts_lower = Counter(i.lower() for i in word_token)
+                    count = Counter(wordcounts_lower)
+                    key_word_count = count[searched_keywords.lower()]
+                    counts.append(key_word_count)
+                word_tokens = word_tokenize(transcript)
 
-            df['counts'] = counts
-            trend_counts = df['counts']
-            trend_companies = df['label']
-            trend_year = df['year']
-            trend_quarter = df['quarter']
+                df_t['counts'] = counts
+                trend_counts = df_t['counts']
+                trend_year = df_t['year']
+                trend_quarter = df_t['quarter']
 
-            trend_json = [{'trend_year': trend_year,
-                           'companies': trend_companies,
-                           'trend_counts': trend_counts,
-                           'trend_quarter':trend_quarter
-                           }
-                          for trend_year,
-                          trend_companies,
-                          trend_counts,
-                          trend_quarter 
-                          in zip(trend_year, trend_companies, trend_counts, trend_quarter)]
-
+                trend_json ={"label":i,
+                             "data":[{'trend_year': trend_year,'trend_quarter':trend_quarter,
+                            'trend_counts': trend_counts}
+                            for trend_year,trend_quarter,trend_counts
+                            in zip(trend_year,trend_quarter, trend_counts )]
+                            } 
+                trends_json.append(trend_json)
 ############# Top Words Analysis ################
-            stemed_transcript = []
+            stemed_transcript = [] 
             for w in word_tokens:
                 # stemed_transcript.append(ps.stem(w).lower())
                 stemed_transcript.append(w.lower())
@@ -186,7 +185,7 @@ class AnalyticsView(ViewSet):
             all_charts = json.dumps(
                 {'topWords': top_words_json,
                  'sentimentWords': sentiment_json,
-                 'trends': trend_json
+                 'trends': trends_json
                  })
             return HttpResponse(all_charts,
                                 status=200, content_type='application/json')
