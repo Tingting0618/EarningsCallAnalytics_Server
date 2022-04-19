@@ -110,7 +110,7 @@ class AnalyticsView(ViewSet):
                                                    "transcript"])
 
             
-            trends_json =[]
+            companies_count =[]
             for i in df['label'].unique():
                 transcript = ""
                 counts = []
@@ -125,17 +125,11 @@ class AnalyticsView(ViewSet):
                 word_tokens = word_tokenize(transcript)
 
                 df_t['counts'] = counts
-                trend_counts = df_t['counts']
-                trend_year = df_t['year']
-                trend_quarter = df_t['quarter']
 
-                trend_json ={"label":i,
-                             "data":[{'trend_year': trend_year,'trend_quarter':trend_quarter,
-                            'trend_counts': trend_counts}
-                            for trend_year,trend_quarter,trend_counts
-                            in zip(trend_year,trend_quarter, trend_counts )]
-                            } 
-                trends_json.append(trend_json)
+                company_count ={'label':i,'data':counts} 
+                companies_count.append(company_count)
+            trends_json={"labels":[start_year,end_year],
+                         "datasets":companies_count}
 ############# Top Words Analysis ################
             stemed_transcript = [] 
             for w in word_tokens:
