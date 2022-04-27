@@ -108,29 +108,38 @@ class AnalyticsView(ViewSet):
                 None
             df = read_frame(companies, fieldnames=["value", "label", "year", "quarter",
                                                    "transcript"])
-
+            df['full_date'] = df['year']+ " Q"+df['quarter']
+            date_list =[]
+            for i in range(start_year,end_year+1):
+                for j in range(1,5):
+                    Q = str(i) + ' Q'+str(j)
+                    date_list.append(Q)
             
             companies_count =[]
             for i in df['label'].unique():
-                transcript = ""
                 counts = []
                 df_t =df[df['label']==i]
-                for (idx, row) in df_t.iterrows():
-                    transcript = transcript+" " + row.loc['transcript']
-                    word_token = word_tokenize(transcript)
-                    wordcounts_lower = Counter(i.lower() for i in word_token)
-                    count = Counter(wordcounts_lower)
-                    key_word_count = count[searched_keywords.lower()]
-                    counts.append(key_word_count)
-                word_tokens = word_tokenize(transcript)
+                for j in date_list:
+                    transcript = ""
+                    try:
+                        df_d = df_t[df_t['full_date']==j]
+                        transcript = transcript+" " + df_d['transcript']
+                        word_token = word_tokenize(transcript)
+                        wordcounts_lower = Counter(i.lower() for i in word_token)
+                        count = Counter(wordcounts_lower)
+                        key_word_count = count[searched_keywords.lower()]
+                        counts.append(key_word_count)
+                    except:
+                        counts.append(0)
 
                 df_t['counts'] = counts
 
                 company_count ={'label':i,'data':counts} 
                 companies_count.append(company_count)
-            trends_json={"labels":[start_year,end_year],
+            trends_json={"labels":date_list,
                          "datasets":companies_count}
 ############# Top Words Analysis ################
+            word_tokens = word_tokenize(transcript)
             stemed_transcript = [] 
             for w in word_tokens:
                 # stemed_transcript.append(ps.stem(w).lower())
